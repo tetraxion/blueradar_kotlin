@@ -21,5 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "BlueRadar"
 include(":app")
-include(":app")
  

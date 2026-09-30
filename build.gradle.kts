@@ -6,3 +6,7 @@ plugins {
     alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.ksp) apply false
 }
+
+tasks.register("clean", Delete::class) {
+    delete(rootProject.buildDir)
+}
