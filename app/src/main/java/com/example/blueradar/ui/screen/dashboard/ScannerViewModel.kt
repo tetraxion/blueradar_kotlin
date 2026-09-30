@@ -2,6 +2,7 @@ package com.example.blueradar.ui.screen.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.blueradar.data.ble.BluetoothStateReceiver
 import com.example.blueradar.data.repository.BleRepository
 import com.example.blueradar.domain.model.BleDevice
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +20,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ScannerViewModel @Inject constructor(
-    private val bleRepository: BleRepository
+    private val bleRepository: BleRepository,
+    private val bluetoothStateReceiver: BluetoothStateReceiver
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScannerUiState())
@@ -27,11 +29,35 @@ class ScannerViewModel @Inject constructor(
 
     private var scanJob: Job? = null
 
+    init {
+        // Observe Bluetooth state changes
+        viewModelScope.launch {
+            bluetoothStateReceiver.observeBluetoothState()
+                .collect { isEnabled ->
+                    _uiState.update { it.copy(isBluetoothEnabled = isEnabled) }
+                    
+                    // Stop scanning if Bluetooth disabled
+                    if (!isEnabled && _uiState.value.isScanning) {
+                        stopScanning()
+                        _uiState.update {
+                            it.copy(error = "Bluetooth has been disabled")
+                        }
+                    }
+                }
+        }
+    }
+
     /**
      * Start BLE scanning
      */
     fun startScanning() {
         if (_uiState.value.isScanning) return
+        
+        // Check Bluetooth state
+        if (!_uiState.value.isBluetoothEnabled) {
+            _uiState.update { it.copy(error = "Bluetooth is disabled. Please enable it.") }
+            return
+        }
 
         _uiState.update { it.copy(isScanning = true, error = null) }
 

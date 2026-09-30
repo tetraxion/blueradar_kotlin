@@ -94,6 +94,9 @@ fun DashboardScreen(
                         permissionsState.launchMultiplePermissionRequest()
                     }
                 )
+            } else if (!uiState.isBluetoothEnabled) {
+                // Bluetooth disabled warning
+                BluetoothDisabledWarning()
             } else {
                 // Search & Filter Section
                 SearchAndFilterSection(
@@ -165,6 +168,28 @@ fun PermissionRationale(
         Button(onClick = onRequestPermission) {
             Text("Grant Permissions")
         }
+    }
+}
+
+@Composable
+fun BluetoothDisabledWarning() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Bluetooth is Disabled",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Please enable Bluetooth in your device settings to start scanning for BLE devices.",
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
