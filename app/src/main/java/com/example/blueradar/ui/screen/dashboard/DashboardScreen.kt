@@ -106,7 +106,7 @@ fun DashboardScreen(
                     onRssiThresholdChange = viewModel::updateRssiThreshold
                 )
 
-                Divider()
+                HorizontalDivider()
 
                 // Device List
                 if (uiState.isScanning) {

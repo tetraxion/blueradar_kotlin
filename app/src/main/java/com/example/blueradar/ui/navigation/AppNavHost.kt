@@ -1,6 +1,7 @@
 package com.example.blueradar.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -9,15 +10,29 @@ import androidx.navigation.navArgument
 import com.example.blueradar.ui.screen.dashboard.DashboardScreen
 import com.example.blueradar.ui.screen.history.HistoryScreen
 import com.example.blueradar.ui.screen.radar.RadarScreen
+import com.example.blueradar.ui.screen.splash.SplashScreen
 
 @Composable
 fun AppNavHost(
-    navController: NavHostController
+    navController: NavHostController,
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Dashboard.route
+        startDestination = Screen.Splash.route,
+        modifier = modifier
     ) {
+        // Splash Screen
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Screen 1: Dashboard Scanner
         composable(Screen.Dashboard.route) {
             DashboardScreen(
