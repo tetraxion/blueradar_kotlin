@@ -113,6 +113,13 @@ class ScannerViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    /**
+     * Toggle sort order between strongest and weakest
+     */
+    fun toggleSortOrder() {
+        _uiState.update { it.copy(isSortAscending = !it.isSortAscending) }
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopScanning()
@@ -127,31 +134,33 @@ data class ScannerUiState(
     val devices: Map<String, BleDevice> = emptyMap(),  // Key = MAC address
     val searchQuery: String = "",
     val rssiThreshold: Int = -100,  // Default: tampilkan semua
+    val isSortAscending: Boolean = false, // false = strongest first, true = weakest first
     val isBluetoothEnabled: Boolean = true,
     val isPermissionGranted: Boolean = false,
     val error: String? = null
 ) {
     /**
      * Get filtered & sorted device list
-     * - Filter by search query (name atau MAC)
-     * - Filter by RSSI threshold
-     * - Sort by RSSI descending (strongest signal first)
      */
     val filteredDevices: List<BleDevice>
-        get() = devices.values
-            .filter { device ->
-                // Filter by RSSI threshold
-                device.rssi >= rssiThreshold
-            }
-            .filter { device ->
-                // Filter by search query
-                if (searchQuery.isBlank()) {
-                    true
-                } else {
-                    val query = searchQuery.lowercase()
-                    device.name?.lowercase()?.contains(query) == true ||
-                            device.mac.lowercase().contains(query)
+        get() {
+            val list = devices.values
+                .filter { device ->
+                    device.rssi >= rssiThreshold
                 }
+                .filter { device ->
+                    if (searchQuery.isBlank()) {
+                        true
+                    } else {
+                        val query = searchQuery.lowercase()
+                        device.name?.lowercase()?.contains(query) == true ||
+                                device.mac.lowercase().contains(query)
+                    }
+                }
+            return if (isSortAscending) {
+                list.sortedBy { it.rssi }
+            } else {
+                list.sortedByDescending { it.rssi }
             }
-            .sortedByDescending { it.rssi }  // Strongest signal first
+        }
 }
