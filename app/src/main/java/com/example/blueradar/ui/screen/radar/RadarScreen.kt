@@ -2,9 +2,14 @@ package com.example.blueradar.ui.screen.radar
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.blueradar.domain.model.SignalCategory
 import com.example.blueradar.domain.util.RssiUtils
+import com.example.blueradar.ui.util.isLandscape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,76 +32,175 @@ fun RadarScreen(
     viewModel: RadarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val landscape = isLandscape()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Radar View") },
+                title = {
+                    Text(
+                        "Device Radar",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { padding ->
-        if (uiState.device == null && !uiState.isTracking) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Waiting for device signal...")
-                    Text(
-                        text = macAddress,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            if (uiState.device == null && !uiState.isTracking) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Waiting for device signal...",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = macAddress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                if (landscape) {
+                    // Landscape Mode (HP Dimiringkan / Tablet)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left Radar Panel
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            RadarVisualization(
+                                signalCategory = uiState.signalCategory,
+                                distance = uiState.estimatedDistance
+                            )
+                        }
 
-                // Device Info
-                uiState.device?.let { device ->
-                    Text(
-                        text = device.name ?: "Unknown Device",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = device.mac,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        // Right Device Info & Metrics Panel
+                        Column(
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            uiState.device?.let { device ->
+                                Surface(
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            text = device.name ?: "Unknown Device",
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = device.mac,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            SignalInfoCards(
+                                rssi = uiState.device?.rssi ?: -100,
+                                distance = uiState.estimatedDistance,
+                                signalCategory = uiState.signalCategory
+                            )
+                        }
+                    }
+                } else {
+                    // Portrait Mode (HP Tegak)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Device Header Card
+                        uiState.device?.let { device ->
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                tonalElevation = 2.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = device.name ?: "Unknown Device",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = device.mac,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Radar Graphic
+                        RadarVisualization(
+                            signalCategory = uiState.signalCategory,
+                            distance = uiState.estimatedDistance
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Signal Metrics Cards
+                        SignalInfoCards(
+                            rssi = uiState.device?.rssi ?: -100,
+                            distance = uiState.estimatedDistance,
+                            signalCategory = uiState.signalCategory
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Radar Visualization
-                RadarVisualization(
-                    signalCategory = uiState.signalCategory,
-                    distance = uiState.estimatedDistance
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Signal Info Cards
-                SignalInfoCards(
-                    rssi = uiState.device?.rssi ?: -100,
-                    distance = uiState.estimatedDistance,
-                    signalCategory = uiState.signalCategory
-                )
             }
         }
     }
@@ -120,18 +225,18 @@ fun RadarVisualization(
     val color = Color(android.graphics.Color.parseColor(signalCategory.colorHex))
 
     Box(
-        modifier = Modifier.size(300.dp),
+        modifier = Modifier.size(260.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2, size.height / 2)
             val maxRadius = size.minDimension / 2
 
-            // Draw concentric circles (zones)
+            // Draw target pulse rings
             for (i in 1..5) {
                 val radius = maxRadius * i / 5
                 drawCircle(
-                    color = Color.Gray.copy(alpha = 0.2f),
+                    color = color.copy(alpha = 0.15f),
                     radius = radius,
                     center = center,
                     style = Stroke(width = 2f)
@@ -140,31 +245,39 @@ fun RadarVisualization(
 
             // Draw target point based on distance
             val targetRadius = when {
-                distance < 1 -> maxRadius * 0.2f
-                distance < 3 -> maxRadius * 0.4f
-                distance < 10 -> maxRadius * 0.6f
-                distance < 20 -> maxRadius * 0.8f
+                distance < 1 -> maxRadius * 0.25f
+                distance < 3 -> maxRadius * 0.45f
+                distance < 10 -> maxRadius * 0.65f
+                distance < 20 -> maxRadius * 0.85f
                 else -> maxRadius
             }
 
             drawCircle(
-                color = color.copy(alpha = 0.3f),
+                color = color.copy(alpha = 0.25f),
                 radius = targetRadius,
                 center = center
             )
 
             drawCircle(
                 color = color,
-                radius = 20f,
+                radius = 18f,
                 center = center
             )
         }
 
-        // Center icon
-        Text(
-            text = "📱",
-            style = MaterialTheme.typography.displayMedium
-        )
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 4.dp,
+            modifier = Modifier.size(56.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "📱",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+        }
     }
 }
 
@@ -174,76 +287,107 @@ fun SignalInfoCards(
     distance: Double,
     signalCategory: SignalCategory
 ) {
+    val categoryColor = Color(android.graphics.Color.parseColor(signalCategory.colorHex))
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // RSSI Card
-        Card(
+        // RSSI & Distance Row Cards
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(android.graphics.Color.parseColor(signalCategory.colorHex)).copy(alpha = 0.1f)
-            )
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Signal Strength
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = categoryColor.copy(alpha = 0.12f)
+                )
             ) {
-                Text(
-                    text = "Signal Strength",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "$rssi dBm",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(android.graphics.Color.parseColor(signalCategory.colorHex))
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Signal",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$rssi dBm",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = categoryColor
+                    )
+                }
             }
-        }
 
-        // Distance Card
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Distance
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                Text(
-                    text = "Estimated Distance",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = RssiUtils.formatDistance(distance),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Distance",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = RssiUtils.formatDistance(distance),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
         // Category Card
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Signal Category",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = signalCategory.label,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(android.graphics.Color.parseColor(signalCategory.colorHex))
-                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    color = categoryColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = signalCategory.label,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = categoryColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = signalCategory.estimatedDistanceLabel,
                     style = MaterialTheme.typography.bodyMedium,
@@ -253,3 +397,4 @@ fun SignalInfoCards(
         }
     }
 }
+

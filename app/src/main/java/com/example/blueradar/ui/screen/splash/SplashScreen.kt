@@ -28,14 +28,12 @@ fun SplashScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scale = remember { Animatable(0.4f) }
 
-    // Observe navigation readiness from SplashViewModel
     LaunchedEffect(uiState.isReadyToNavigate) {
         if (uiState.isReadyToNavigate) {
             onSplashFinished()
         }
     }
 
-    // Pulse animation for radar effect around logo
     val infiniteTransition = rememberInfiniteTransition(label = "splashPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.8f,
@@ -67,23 +65,25 @@ fun SplashScreen(
         )
     }
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        // Radar pulse effect behind logo
+        // Radar pulse effect using brand Primary Blue & Secondary Cyan
         Canvas(modifier = Modifier.size(240.dp)) {
             val center = Offset(size.width / 2, size.height / 2)
             drawCircle(
-                color = Color(0xFF00E676).copy(alpha = pulseAlpha),
+                color = primaryColor.copy(alpha = pulseAlpha),
                 radius = pulseRadius,
                 center = center,
                 style = Stroke(width = 4f)
             )
             drawCircle(
-                color = Color(0xFF00E676).copy(alpha = (pulseAlpha * 0.5f)),
+                color = primaryColor.copy(alpha = (pulseAlpha * 0.5f)),
                 radius = pulseRadius * 0.7f,
                 center = center,
                 style = Stroke(width = 2f)
@@ -121,3 +121,4 @@ fun SplashScreen(
         }
     }
 }
+
