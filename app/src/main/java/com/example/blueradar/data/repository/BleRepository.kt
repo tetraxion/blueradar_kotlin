@@ -2,6 +2,7 @@ package com.example.blueradar.data.repository
 
 import com.example.blueradar.domain.model.BleDevice
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Repository interface untuk BLE operations
@@ -39,4 +40,10 @@ interface BleRepository {
      * Update Bluetooth state
      */
     fun updateBluetoothState(enabled: Boolean)
+
+    /**
+     * Get current scanned devices as StateFlow
+     * Untuk share scan results antar ViewModels
+     */
+    fun getScannedDevices(): StateFlow<Map<String, BleDevice>>
 }

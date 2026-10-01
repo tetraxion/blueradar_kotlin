@@ -73,6 +73,12 @@ dependencies {
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
 
+    // Google Play Services Location
+    implementation("com.google.android.gms:play-services-location:21.1.0")
+    
+    // Kotlin Coroutines Tasks (for Play Services)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

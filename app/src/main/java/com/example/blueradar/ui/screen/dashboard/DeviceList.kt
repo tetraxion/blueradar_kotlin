@@ -40,7 +40,8 @@ fun DeviceList(
         ) {
             items(
                 items = devices,
-                key = { it.mac }
+                key = { device -> device.mac },
+                contentType = { "device_item" }
             ) { device ->
                 DeviceItem(
                     device = device,
@@ -56,7 +57,8 @@ fun DeviceList(
         ) {
             items(
                 items = devices,
-                key = { it.mac }
+                key = { device -> device.mac },
+                contentType = { "device_item" }
             ) { device ->
                 DeviceItem(
                     device = device,

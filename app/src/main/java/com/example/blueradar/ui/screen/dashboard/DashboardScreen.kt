@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
@@ -39,6 +42,9 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Get MainActivity reference untuk trigger enable requests
+    val mainActivity = com.example.blueradar.LocalMainActivity.current
+
     // Request permissions
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(
@@ -59,6 +65,41 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         if (!permissionsState.allPermissionsGranted) {
             permissionsState.launchMultiplePermissionRequest()
+        }
+    }
+
+    // Observe enable request flags dan trigger launcher
+    LaunchedEffect(uiState.needsBluetoothEnable) {
+        if (uiState.needsBluetoothEnable) {
+            mainActivity.requestEnableBluetooth()
+            viewModel.onEnableRequestHandled()
+        }
+    }
+
+    LaunchedEffect(uiState.needsLocationEnable) {
+        if (uiState.needsLocationEnable) {
+            mainActivity.requestEnableLocation()
+            viewModel.onEnableRequestHandled()
+        }
+    }
+
+    // Observe enable results dari MainActivity
+    val bluetoothEnableResult by mainActivity.bluetoothEnableResult.collectAsState()
+    val locationEnableResult by mainActivity.locationEnableResult.collectAsState()
+
+    LaunchedEffect(bluetoothEnableResult) {
+        bluetoothEnableResult?.let { enabled ->
+            if (enabled) {
+                viewModel.onBluetoothEnabled()
+            }
+        }
+    }
+
+    LaunchedEffect(locationEnableResult) {
+        locationEnableResult?.let { enabled ->
+            if (enabled) {
+                viewModel.onLocationEnabled()
+            }
         }
     }
 
@@ -110,8 +151,21 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    // System Status Icon - Dynamic (Bluetooth + Location)
                     IconButton(onClick = { showBluetoothDialog = true }) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = "Bluetooth Status", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            imageVector = if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) {
+                                Icons.Default.Bluetooth // Bluetooth icon jika semua OK
+                            } else {
+                                Icons.Default.BluetoothDisabled // BluetoothDisabled icon jika ada yang mati
+                            },
+                            contentDescription = "System Status",
+                            tint = if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) {
+                                Color(0xFF10B981) // Green jika semua enabled
+                            } else {
+                                Color(0xFFDC2626) // Red jika ada yang disabled
+                            }
+                        )
                     }
                     IconButton(onClick = { showSettingsDialog = true }) {
                         Icon(Icons.Default.Tune, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -143,8 +197,6 @@ fun DashboardScreen(
         ) {
             if (!permissionsState.allPermissionsGranted) {
                 PermissionRationale(onRequestPermission = { permissionsState.launchMultiplePermissionRequest() })
-            } else if (!uiState.isBluetoothEnabled) {
-                BluetoothDisabledWarning()
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Scanning Control & Stats Card
@@ -188,16 +240,86 @@ fun DashboardScreen(
                 }
             }
 
-            // Bluetooth Status Dialog
+            // Bluetooth Status Dialog dengan Enable Action
             if (showBluetoothDialog) {
                 AlertDialog(
                     onDismissRequest = { showBluetoothDialog = false },
-                    title = { Text("Bluetooth Status", fontWeight = FontWeight.Bold) },
+                    title = { Text("System Status", fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
-                            Text("• Adapter: Enabled & Operational")
-                            Text("• BLE Mode: High Speed LE Scan")
-                            Text("• Status: ${if (uiState.isBluetoothEnabled) "Active" else "Disabled"}")
+                            // Bluetooth Status
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("• Bluetooth:")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (uiState.isBluetoothEnabled) "Enabled" else "Disabled",
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (uiState.isBluetoothEnabled) Color(0xFF10B981) else Color(0xFFDC2626)
+                                    )
+                                    if (!uiState.isBluetoothEnabled) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = {
+                                                mainActivity.requestEnableBluetooth()
+                                                showBluetoothDialog = false
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.height(32.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp)
+                                        ) {
+                                            Text("Enable", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Location Status
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("• Location:")
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (uiState.isLocationEnabled) "Enabled" else "Disabled",
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (uiState.isLocationEnabled) Color(0xFF10B981) else Color(0xFFDC2626)
+                                    )
+                                    if (!uiState.isLocationEnabled) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = {
+                                                mainActivity.requestEnableLocation()
+                                                showBluetoothDialog = false
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier.height(32.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp)
+                                        ) {
+                                            Text("Enable", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Additional Info
+                            Text("• BLE Mode: High Speed LE Scan", fontSize = 13.sp)
+                            Text("• Status: ${if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) "Ready to Scan" else "Not Ready"}", fontSize = 13.sp)
                         }
                     },
                     confirmButton = {
@@ -442,7 +564,7 @@ fun PermissionRationale(onRequestPermission: () -> Unit) {
 }
 
 @Composable
-fun BluetoothDisabledWarning() {
+fun BluetoothDisabledWarning(onEnableBluetooth: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -457,6 +579,13 @@ fun BluetoothDisabledWarning() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            Icon(
+                imageVector = Icons.Default.Bluetooth,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Bluetooth is Disabled",
                 style = MaterialTheme.typography.titleLarge,
@@ -465,10 +594,63 @@ fun BluetoothDisabledWarning() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Please enable Bluetooth in your device settings to start scanning for BLE devices.",
+                text = "BlueRadar needs Bluetooth to scan for nearby BLE devices. Please enable it to continue.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onEnableBluetooth,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Enable Bluetooth", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationDisabledWarning(onEnableLocation: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Location is Disabled",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Android requires Location to be enabled for Bluetooth scanning. Please enable it to continue.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onEnableLocation,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Enable Location", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

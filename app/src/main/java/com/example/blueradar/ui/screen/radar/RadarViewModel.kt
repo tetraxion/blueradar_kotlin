@@ -8,6 +8,7 @@ import com.example.blueradar.data.repository.DeviceRepository
 import com.example.blueradar.domain.model.BleDevice
 import com.example.blueradar.domain.model.SignalCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -32,27 +33,21 @@ class RadarViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     init {
-        observeAllDevices()
+        // Observe real-time scanned devices dari shared repository state
+        observeScannedDevices()
+        
         if (initialMac.isNotEmpty()) {
             trackDevice(initialMac)
         }
     }
 
-    private fun observeAllDevices() {
+    /**
+     * Observe real-time scanned devices (shared dari ScannerViewModel)
+     */
+    private fun observeScannedDevices() {
         viewModelScope.launch {
-            deviceRepository.getAllDevices().collect { entities ->
-                val devices = entities.map { entity ->
-                    val cat = SignalCategory.fromRssi(entity.lastRssi)
-                    val dist = com.example.blueradar.domain.util.RssiUtils.estimateDistance(entity.lastRssi)
-                    BleDevice(
-                        mac = entity.mac,
-                        name = entity.name,
-                        rssi = entity.lastRssi,
-                        estimatedDistance = dist,
-                        signalCategory = cat,
-                        lastScanTime = entity.lastSeenAt
-                    )
-                }
+            bleRepository.getScannedDevices().collect { devicesMap ->
+                val devices = devicesMap.values.toList()
                 _uiState.update { state ->
                     val selected = devices.find { it.mac == state.selectedMac } ?: devices.firstOrNull()
                     state.copy(
@@ -99,7 +94,6 @@ class RadarViewModel @Inject constructor(
     }
 
     fun stopTracking() {
-        bleRepository.stopScanning()
         _uiState.update { it.copy(isTracking = false) }
     }
 
