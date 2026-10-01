@@ -32,7 +32,8 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToRadar: (String) -> Unit,
+    onNavigateToRadar: () -> Unit,
+    onNavigateToDetail: (String) -> Unit,
     onNavigateToHistory: () -> Unit,
     viewModel: ScannerViewModel = hiltViewModel()
 ) {
@@ -127,13 +128,7 @@ fun DashboardScreen(
                 onTabSelected = { tab ->
                     when (tab) {
                         NavTab.SCANNER -> {}
-                        NavTab.RADAR -> {
-                            if (uiState.filteredDevices.isNotEmpty()) {
-                                onNavigateToRadar(uiState.filteredDevices.first().mac)
-                            } else {
-                                showNoTargetDialog = true
-                            }
-                        }
+                        NavTab.RADAR -> onNavigateToRadar()
                         NavTab.HISTORY -> onNavigateToHistory()
                     }
                 }
@@ -186,7 +181,7 @@ fun DashboardScreen(
                     } else {
                         DeviceList(
                             devices = uiState.filteredDevices,
-                            onDeviceClick = { device -> onNavigateToRadar(device.mac) },
+                            onDeviceClick = { device -> onNavigateToDetail(device.mac) },
                             useGrid = landscape
                         )
                     }

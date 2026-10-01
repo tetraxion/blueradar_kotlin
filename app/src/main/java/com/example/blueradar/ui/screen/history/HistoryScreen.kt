@@ -31,10 +31,12 @@ import java.util.*
 @Composable
 fun HistoryScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToDetail: (String) -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showClearDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
 
@@ -57,11 +59,6 @@ fun HistoryScreen(
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
@@ -100,7 +97,7 @@ fun HistoryScreen(
                 // Local Persistence Header Section
                 PersistenceHeaderCard(
                     totalCount = uiState.devices.size,
-                    onExportClick = {},
+                    onExportClick = { showExportDialog = true },
                     onClearClick = { showClearDialog = true }
                 )
 
@@ -144,7 +141,8 @@ fun HistoryScreen(
                         ) { device ->
                             HistoryDeviceCard(
                                 device = device,
-                                onDelete = { viewModel.deleteDevice(device.mac) }
+                                onDelete = { viewModel.deleteDevice(device.mac) },
+                                onTrack = { onNavigateToDetail(device.mac) }
                             )
                         }
 
@@ -158,6 +156,55 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    // Export CSV / JSON Dialog
+    if (showExportDialog) {
+        val exportText = remember(uiState.devices) {
+            buildString {
+                appendLine("MAC,Name,LastRssi,LastSeen")
+                uiState.devices.forEach { d ->
+                    appendLine("${d.mac},\"${d.name ?: "Unknown"}\",${d.lastRssi},${d.lastSeenAt}")
+                }
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = { Text("Export CSV / JSON Log", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Total ${uiState.devices.size} data log siap diexport:", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp)
+                    ) {
+                        Text(
+                            text = exportText,
+                            modifier = Modifier.padding(8.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExportDialog = false
+                    }
+                ) {
+                    Text("Salin Ke Clipboard / Export", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportDialog = false }) {
+                    Text("Tutup")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 
     // Clear history dialog
