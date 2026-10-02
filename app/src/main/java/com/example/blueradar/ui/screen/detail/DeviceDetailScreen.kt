@@ -161,24 +161,46 @@ fun DeviceDetailScreen(
 
             // System Status Dialog (Reusable)
             val mainActivity = com.example.blueradar.LocalMainActivity.current
+            
+            // Refresh status saat dialog dibuka
+            LaunchedEffect(showBluetoothDialog) {
+                if (showBluetoothDialog) {
+                    scannerViewModel.checkSystemReadiness()
+                }
+            }
+            
             SystemStatusDialog(
                 show = showBluetoothDialog,
                 isBluetoothEnabled = scannerState.isBluetoothEnabled,
                 isLocationEnabled = scannerState.isLocationEnabled,
                 onDismiss = { showBluetoothDialog = false },
-                onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
-                onEnableLocation = { mainActivity.requestEnableLocation() },
+                onEnableBluetooth = { 
+                    mainActivity.requestEnableBluetooth()
+                },
+                onEnableLocation = { 
+                    mainActivity.requestEnableLocation()
+                },
                 additionalInfo = "Tracking: $currentMac"
             )
 
-            // Scanner Settings Dialog
+            // RSSI Filter Settings Dialog (Universal untuk semua halaman)
             if (showSettingsDialog) {
                 AlertDialog(
                     onDismissRequest = { showSettingsDialog = false },
-                    title = { Text("Target Settings", fontWeight = FontWeight.Bold) },
+                    title = { Text("RSSI Filter Settings", fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
-                            Text("Kalibrasi TxPower Reference (-59 dBm standar)")
+                            Text("Ubah Filter Cutoff Signal (RSSI):", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Cutoff Saat Ini: ${scannerState.rssiThreshold} dBm", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Range: -100 dBm (weak) to -40 dBm (strong)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Slider(
+                                value = scannerState.rssiThreshold.toFloat(),
+                                onValueChange = { scannerViewModel.updateRssiThreshold(it.toInt()) },
+                                valueRange = -100f..-40f
+                            )
                         }
                     },
                     confirmButton = {

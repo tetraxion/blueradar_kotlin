@@ -74,7 +74,7 @@ class ScannerViewModel @Inject constructor(
      * Check apakah Bluetooth dan Location sudah enabled
      * Update UI state accordingly
      */
-    private fun checkSystemReadiness() {
+    fun checkSystemReadiness() {
         viewModelScope.launch {
             val isBluetoothEnabled = systemSettingsHelper.isBluetoothEnabled()
             val isLocationEnabled = systemSettingsHelper.isLocationEnabled(context)

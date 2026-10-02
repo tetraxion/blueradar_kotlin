@@ -197,26 +197,41 @@ fun DashboardScreen(
 
             // System Status Dialog (Reusable)
             val mainActivity = LocalMainActivity.current
+            
+            // Refresh status saat dialog dibuka
+            LaunchedEffect(showBluetoothDialog) {
+                if (showBluetoothDialog) {
+                    viewModel.checkSystemReadiness()
+                }
+            }
+            
             SystemStatusDialog(
                 show = showBluetoothDialog,
                 isBluetoothEnabled = uiState.isBluetoothEnabled,
                 isLocationEnabled = uiState.isLocationEnabled,
                 onDismiss = { showBluetoothDialog = false },
-                onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
-                onEnableLocation = { mainActivity.requestEnableLocation() },
+                onEnableBluetooth = { 
+                    mainActivity.requestEnableBluetooth()
+                },
+                onEnableLocation = { 
+                    mainActivity.requestEnableLocation()
+                },
                 additionalInfo = "BLE Mode: High Speed LE Scan"
             )
 
-            // Scanner Settings Dialog
+            // RSSI Filter Settings Dialog (Universal untuk semua halaman)
             if (showSettingsDialog) {
                 AlertDialog(
                     onDismissRequest = { showSettingsDialog = false },
-                    title = { Text("Scanner Settings", fontWeight = FontWeight.Bold) },
+                    title = { Text("RSSI Filter Settings", fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
                             Text("Ubah Filter Cutoff Signal (RSSI):", style = MaterialTheme.typography.bodyMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Cutoff Saat Ini: ${uiState.rssiThreshold} dBm", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Range: -100 dBm (weak) to -40 dBm (strong)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
                             Slider(
                                 value = uiState.rssiThreshold.toFloat(),
                                 onValueChange = { viewModel.updateRssiThreshold(it.toInt()) },

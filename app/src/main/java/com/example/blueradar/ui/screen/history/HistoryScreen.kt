@@ -48,6 +48,7 @@ fun HistoryScreen(
     var showClearDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showBluetoothDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
 
@@ -59,7 +60,8 @@ fun HistoryScreen(
                 title = "History",
                 isBluetoothEnabled = scannerState.isBluetoothEnabled,
                 isLocationEnabled = scannerState.isLocationEnabled,
-                onStatusClick = { showBluetoothDialog = true }
+                onStatusClick = { showBluetoothDialog = true },
+                onSettingsClick = { showSettingsDialog = true }
             )
         },
         bottomBar = {
@@ -215,13 +217,25 @@ fun HistoryScreen(
 
     // System Status Dialog (Reusable)
     val mainActivity = com.example.blueradar.LocalMainActivity.current
+    
+    // Refresh status saat dialog dibuka
+    LaunchedEffect(showBluetoothDialog) {
+        if (showBluetoothDialog) {
+            scannerViewModel.checkSystemReadiness()
+        }
+    }
+    
     SystemStatusDialog(
         show = showBluetoothDialog,
         isBluetoothEnabled = scannerState.isBluetoothEnabled,
         isLocationEnabled = scannerState.isLocationEnabled,
         onDismiss = { showBluetoothDialog = false },
-        onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
-        onEnableLocation = { mainActivity.requestEnableLocation() },
+        onEnableBluetooth = { 
+            mainActivity.requestEnableBluetooth()
+        },
+        onEnableLocation = { 
+            mainActivity.requestEnableLocation()
+        },
         additionalInfo = "BLE Mode: High Speed LE Scan"
     )
 
@@ -244,6 +258,35 @@ fun HistoryScreen(
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
                     Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // RSSI Filter Settings Dialog (Universal untuk semua halaman)
+    if (showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showSettingsDialog = false },
+            title = { Text("RSSI Filter Settings", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Ubah Filter Cutoff Signal (RSSI):", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Cutoff Saat Ini: ${scannerState.rssiThreshold} dBm", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Range: -100 dBm (weak) to -40 dBm (strong)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Slider(
+                        value = scannerState.rssiThreshold.toFloat(),
+                        onValueChange = { scannerViewModel.updateRssiThreshold(it.toInt()) },
+                        valueRange = -100f..-40f
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSettingsDialog = false }) {
+                    Text("Simpan", fontWeight = FontWeight.Bold)
                 }
             },
             shape = RoundedCornerShape(20.dp)

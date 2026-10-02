@@ -92,7 +92,8 @@ fun BlueRadarAppBarSimple(
     title: String,
     isBluetoothEnabled: Boolean,
     isLocationEnabled: Boolean,
-    onStatusClick: () -> Unit
+    onStatusClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -124,7 +125,7 @@ fun BlueRadarAppBarSimple(
                 isBluetoothEnabled = isBluetoothEnabled,
                 isLocationEnabled = isLocationEnabled,
                 onStatusClick = onStatusClick,
-                onSettingsClick = {}
+                onSettingsClick = onSettingsClick
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
