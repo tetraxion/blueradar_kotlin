@@ -1,14 +1,16 @@
 # BlueRadar - BLE Proximity Tracker
 
-<div align="center">
+<p align="center">
   <img src="docs/assets/logo_blueradar.png" alt="BlueRadar Logo" width="200"/>
-  
-  ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
-  ![Min SDK](https://img.shields.io/badge/Min%20SDK-26-blue.svg)
-  ![Language](https://img.shields.io/badge/Language-Kotlin-purple.svg)
-  ![Architecture](https://img.shields.io/badge/Architecture-MVVM-orange.svg)
-  ![DI](https://img.shields.io/badge/DI-Hilt-yellow.svg)
-</div>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android-green.svg" alt="Platform"/>
+  <img src="https://img.shields.io/badge/Min%20SDK-26-blue.svg" alt="Min SDK"/>
+  <img src="https://img.shields.io/badge/Language-Kotlin-purple.svg" alt="Language"/>
+  <img src="https://img.shields.io/badge/Architecture-MVVM-orange.svg" alt="Architecture"/>
+  <img src="https://img.shields.io/badge/DI-Hilt-yellow.svg" alt="DI"/>
+</p>
 
 BlueRadar adalah aplikasi Android yang memindai perangkat Bluetooth Low Energy (BLE) di sekitar pengguna secara real-time. Aplikasi ini memungkinkan pengguna untuk melihat daftar perangkat aktif, memantau kekuatan sinyal (RSSI), dan melacak kedekatan perangkat target menggunakan visualisasi radar 360° dengan indikator zona jarak.
 
