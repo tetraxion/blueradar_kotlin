@@ -41,7 +41,7 @@ object RssiUtils {
      */
     fun formatDistance(distance: Double): String {
         return when {
-            distance < 0 -> "Unknown"
+            distance < 0 -> "Unknown Device"
             distance < 1.0 -> "< 1 m"
             else -> "%.1f m".format(distance)
         }
