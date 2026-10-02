@@ -4,7 +4,9 @@ import android.Manifest
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
@@ -149,46 +151,48 @@ fun DashboardScreen(
             if (!permissionsState.allPermissionsGranted) {
                 PermissionRationale(onRequestPermission = { permissionsState.launchMultiplePermissionRequest() })
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Scanning Control & Stats Card
-                    ScanningStatsHeaderCard(
-                        isScanning = uiState.isScanning,
-                        deviceCount = uiState.filteredDevices.size,
-                        onToggleScan = {
-                            if (uiState.isScanning) viewModel.stopScanning() else viewModel.startScanning()
+                // Device List (dengan header di dalamnya agar bisa scroll semua)
+                DeviceList(
+                    devices = uiState.filteredDevices,
+                    onDeviceClick = { device -> onNavigateToDetail(device.mac) },
+                    useGrid = landscape,
+                    headerContent = {
+                        Column {
+                            // Scanning Control & Stats Card
+                            ScanningStatsHeaderCard(
+                                isScanning = uiState.isScanning,
+                                deviceCount = uiState.filteredDevices.size,
+                                onToggleScan = {
+                                    if (uiState.isScanning) viewModel.stopScanning() else viewModel.startScanning()
+                                }
+                            )
+
+                            // Search & Filter Header
+                            SearchAndFilterSection(
+                                searchQuery = uiState.searchQuery,
+                                onSearchQueryChange = viewModel::updateSearchQuery,
+                                rssiThreshold = uiState.rssiThreshold,
+                                onRssiThresholdChange = viewModel::updateRssiThreshold,
+                                isSortAscending = uiState.isSortAscending,
+                                onToggleSort = viewModel::toggleSortOrder
+                            )
+
+                            if (uiState.isScanning) {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            // Empty state (jika tidak ada devices)
+                            if (uiState.filteredDevices.isEmpty()) {
+                                EmptyDeviceList(isScanning = uiState.isScanning)
+                            }
                         }
-                    )
-
-                    // Search & Filter Header
-                    SearchAndFilterSection(
-                        searchQuery = uiState.searchQuery,
-                        onSearchQueryChange = viewModel::updateSearchQuery,
-                        rssiThreshold = uiState.rssiThreshold,
-                        onRssiThresholdChange = viewModel::updateRssiThreshold,
-                        isSortAscending = uiState.isSortAscending,
-                        onToggleSort = viewModel::toggleSortOrder
-                    )
-
-                    if (uiState.isScanning) {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 2.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
                     }
-
-                    // Device List
-                    if (uiState.filteredDevices.isEmpty()) {
-                        EmptyDeviceList(isScanning = uiState.isScanning)
-                    } else {
-                        DeviceList(
-                            devices = uiState.filteredDevices,
-                            onDeviceClick = { device -> onNavigateToDetail(device.mac) },
-                            useGrid = landscape
-                        )
-                    }
-                }
+                )
             }
 
             // System Status Dialog (Reusable)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -28,7 +29,8 @@ fun DeviceList(
     devices: List<BleDevice>,
     onDeviceClick: (BleDevice) -> Unit,
     modifier: Modifier = Modifier,
-    useGrid: Boolean = false
+    useGrid: Boolean = false,
+    headerContent: (@Composable () -> Unit)? = null
 ) {
     if (useGrid) {
         LazyVerticalGrid(
@@ -38,6 +40,11 @@ fun DeviceList(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            if (headerContent != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    headerContent()
+                }
+            }
             items(
                 items = devices,
                 key = { device -> device.mac },
@@ -55,6 +62,14 @@ fun DeviceList(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (headerContent != null) {
+                item {
+                    Column {
+                        headerContent()
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
             items(
                 items = devices,
                 key = { device -> device.mac },

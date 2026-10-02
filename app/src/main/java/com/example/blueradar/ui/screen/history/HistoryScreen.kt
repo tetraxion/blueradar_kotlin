@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -79,28 +81,30 @@ fun HistoryScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Local Persistence Header Section
-                PersistenceHeaderCard(
-                    totalCount = uiState.devices.size,
-                    onExportClick = { showExportDialog = true },
-                    onClearClick = { showClearDialog = true }
-                )
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (uiState.devices.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    PersistenceHeaderCard(
+                        totalCount = uiState.devices.size,
+                        onExportClick = { showExportDialog = true },
+                        onClearClick = { showClearDialog = true }
+                    )
 
-                // Search & Filter Bar
-                HistorySearchAndFilter(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    selectedFilter = selectedFilter,
-                    onFilterChange = { selectedFilter = it },
-                    totalDevices = uiState.devices.size
-                )
+                    HistorySearchAndFilter(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        selectedFilter = selectedFilter,
+                        onFilterChange = { selectedFilter = it },
+                        totalDevices = uiState.devices.size
+                    )
 
-                if (uiState.isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
-                } else if (uiState.devices.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = "No device history recorded in database",
@@ -108,36 +112,52 @@ fun HistoryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                } else {
-                    val filteredList = uiState.devices.filter { device ->
-                        device.name?.contains(searchQuery, ignoreCase = true) == true ||
-                        device.mac.contains(searchQuery, ignoreCase = true)
+                }
+            } else {
+                val filteredList = uiState.devices.filter { device ->
+                    device.name?.contains(searchQuery, ignoreCase = true) == true ||
+                    device.mac.contains(searchQuery, ignoreCase = true)
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    item {
+                        Column {
+                            PersistenceHeaderCard(
+                                totalCount = uiState.devices.size,
+                                onExportClick = { showExportDialog = true },
+                                onClearClick = { showClearDialog = true }
+                            )
+
+                            HistorySearchAndFilter(
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                selectedFilter = selectedFilter,
+                                onFilterChange = { selectedFilter = it },
+                                totalDevices = uiState.devices.size
+                            )
+                        }
                     }
 
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = filteredList,
-                            key = { it.mac }
-                        ) { device ->
+                    items(
+                        items = filteredList,
+                        key = { it.mac }
+                    ) { device ->
+                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                             HistoryDeviceCard(
                                 device = device,
                                 onDelete = { viewModel.deleteDevice(device.mac) },
                                 onTrack = { onNavigateToDetail(device.mac) }
                             )
                         }
+                    }
 
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Footer Specs Banner (Matching Screen 3 Mockup)
-                            ArchitectureSpecFooter()
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ArchitectureSpecFooter()
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
@@ -150,7 +170,7 @@ fun HistoryScreen(
             buildString {
                 appendLine("MAC,Name,LastRssi,LastSeen")
                 uiState.devices.forEach { d ->
-                    appendLine("${d.mac},\"${d.name ?: "Unknown"}\",${d.lastRssi},${d.lastSeenAt}")
+                    appendLine("${d.mac},\"${d.name ?: "Unknown Device"}\",${d.lastRssi},${d.lastSeenAt}")
                 }
             }
         }

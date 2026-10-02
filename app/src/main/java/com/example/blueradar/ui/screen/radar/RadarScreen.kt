@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -109,77 +110,78 @@ fun RadarScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Scope Stats Header Banner dengan Scan Control
-                RadarScopeHeaderBanner(
-                    deviceCount = activeDevices.size,
-                    totalCount = uiState.allDevices.size,
-                    isScanning = scannerState.isScanning,
-                    onToggleScan = {
-                        if (scannerState.isScanning) {
-                            scannerViewModel.stopScanning()
-                        } else {
-                            scannerViewModel.startScanning()
+            if (activeDevices.isEmpty()) {
+                // Jika tidak ada devices, tampilkan Column dengan scroll
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    RadarScopeHeaderBanner(
+                        deviceCount = activeDevices.size,
+                        totalCount = uiState.allDevices.size,
+                        isScanning = scannerState.isScanning,
+                        onToggleScan = {
+                            if (scannerState.isScanning) {
+                                scannerViewModel.stopScanning()
+                            } else {
+                                scannerViewModel.startScanning()
+                            }
                         }
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedRangeFilter == "ALL",
+                            onClick = { selectedRangeFilter = "ALL" },
+                            label = { Text("All Range (${uiState.allDevices.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedRangeFilter == "NEAR",
+                            onClick = { selectedRangeFilter = "NEAR" },
+                            label = { Text("Near (< 3m)", fontSize = 11.sp) },
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedRangeFilter == "MID",
+                            onClick = { selectedRangeFilter = "MID" },
+                            label = { Text("Mid (3 - 10m)", fontSize = 11.sp) },
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        FilterChip(
+                            selected = selectedRangeFilter == "FAR",
+                            onClick = { selectedRangeFilter = "FAR" },
+                            label = { Text("Far (> 10m)", fontSize = 11.sp) },
+                            shape = RoundedCornerShape(10.dp)
+                        )
                     }
-                )
 
-                // Range Filter Chips
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = selectedRangeFilter == "ALL",
-                        onClick = { selectedRangeFilter = "ALL" },
-                        label = { Text("All Range (${uiState.allDevices.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                        shape = RoundedCornerShape(10.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Spatial360RadarScope(devices = activeDevices)
+                    }
+
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+                    Text(
+                        text = "DISCOVERED BEACONS ON SCOPE",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    FilterChip(
-                        selected = selectedRangeFilter == "NEAR",
-                        onClick = { selectedRangeFilter = "NEAR" },
-                        label = { Text("Near (< 3m)", fontSize = 11.sp) },
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    FilterChip(
-                        selected = selectedRangeFilter == "MID",
-                        onClick = { selectedRangeFilter = "MID" },
-                        label = { Text("Mid (3 - 10m)", fontSize = 11.sp) },
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    FilterChip(
-                        selected = selectedRangeFilter == "FAR",
-                        onClick = { selectedRangeFilter = "FAR" },
-                        label = { Text("Far (> 10m)", fontSize = 11.sp) },
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                }
 
-                // Center 360 Spatial Radar Scope Canvas
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Spatial360RadarScope(devices = activeDevices)
-                }
-
-                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-
-                // List of Detected Beacons on Scope
-                Text(
-                    text = "DISCOVERED BEACONS ON SCOPE",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (activeDevices.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -192,20 +194,93 @@ fun RadarScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(items = activeDevices, key = { it.mac }) { device ->
+                }
+            } else {
+                // Jika ada devices, gunakan LazyColumn agar bisa scroll
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    item {
+                        Column {
+                            RadarScopeHeaderBanner(
+                                deviceCount = activeDevices.size,
+                                totalCount = uiState.allDevices.size,
+                                isScanning = scannerState.isScanning,
+                                onToggleScan = {
+                                    if (scannerState.isScanning) {
+                                        scannerViewModel.stopScanning()
+                                    } else {
+                                        scannerViewModel.startScanning()
+                                    }
+                                }
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = selectedRangeFilter == "ALL",
+                                    onClick = { selectedRangeFilter = "ALL" },
+                                    label = { Text("All Range (${uiState.allDevices.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedRangeFilter == "NEAR",
+                                    onClick = { selectedRangeFilter = "NEAR" },
+                                    label = { Text("Near (< 3m)", fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedRangeFilter == "MID",
+                                    onClick = { selectedRangeFilter = "MID" },
+                                    label = { Text("Mid (3 - 10m)", fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = selectedRangeFilter == "FAR",
+                                    onClick = { selectedRangeFilter = "FAR" },
+                                    label = { Text("Far (> 10m)", fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Spatial360RadarScope(devices = activeDevices)
+                            }
+
+                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+                            Text(
+                                text = "DISCOVERED BEACONS ON SCOPE",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    items(items = activeDevices, key = { it.mac }) { device ->
+                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                             ScopeDeviceItemCard(
                                 device = device,
                                 onTrackDetail = { onNavigateToDetail(device.mac) }
                             )
                         }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
