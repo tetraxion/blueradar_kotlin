@@ -21,13 +21,13 @@ BlueRadar adalah aplikasi Android yang memindai perangkat Bluetooth Low Energy (
 <img src="docs/assets/screensshots/scanner.jpeg" width="250" alt="Dashboard Screen">
 
 ### Radar View (360° Visualization)
-<img src="docs/assets/screensshots/radar scan.jpeg" width="250" alt="Radar View Screen">
+<img src="docs/assets/screensshots/radarscan.jpeg" width="250" alt="Radar View Screen">
 
 ### History Log
 <img src="docs/assets/screensshots/history.jpeg" width="250" alt="History Screen">
 
 ### Device Detail
-<img src="docs/assets/screensshots/detail scan.jpeg" width="250" alt="Device Detail Screen">
+<img src="docs/assets/screensshots/detailscan.jpeg" width="250" alt="Device Detail Screen">
 
 </div>
 
