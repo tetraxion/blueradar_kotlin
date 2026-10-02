@@ -1323,43 +1323,6 @@ if (distance < 0) return "Unknown"
 - Limit max entries per device
 - Add "Archive" feature
 
----
-
-## 🚀 Future Enhancements
-
-Potential improvements untuk production version:
-
-### Features
-- [ ] **Favorites/Bookmarks**: Pin frequently-tracked devices
-- [ ] **Notifications**: Alert saat device detected/lost
-- [ ] **Geofencing**: Create virtual boundaries with BLE beacons
-- [ ] **Device Labeling**: Custom names untuk devices
-- [ ] **RSSI Graph**: Historical signal strength chart
-- [ ] **Export Enhancements**: PDF reports, scheduled exports
-- [ ] **Widget**: Home screen widget untuk quick scan
-- [ ] **Foreground Service**: Background scanning dengan notification
-- [ ] **Backup/Restore**: Cloud sync untuk history data
-
-### Technical
-- [ ] **Unit Tests**: Comprehensive test coverage (ViewModel, Repository, Utils)
-- [ ] **UI Tests**: Compose test suite
-- [ ] **CI/CD**: GitHub Actions untuk automated builds
-- [ ] **Crashlytics**: Firebase Crashlytics integration
-- [ ] **Analytics**: Usage tracking (privacy-compliant)
-- [ ] **Performance Monitoring**: Firebase Performance
-- [ ] **Moving Average**: Smooth RSSI readings
-- [ ] **Kalman Filter**: Advanced distance estimation
-- [ ] **Multi-language**: i18n support (English, Indonesian, dll)
-
-### UI/UX
-- [ ] **Onboarding**: Tutorial screens untuk first-time users
-- [ ] **Settings Screen**: Customizable preferences
-- [ ] **Theme Picker**: Multiple color themes
-- [ ] **Accessibility**: TalkBack optimization, larger text support
-- [ ] **Animations**: Smoother transitions & micro-interactions
-- [ ] **Custom Indicators**: User-defined signal categories
-
----
 
 ## 📚 Documentation & Resources
 
@@ -1496,6 +1459,29 @@ Timeframe: 48 Hours
 - Lifecycle management
 - Permission handling
 - Error handling & resilience
+
+---
+
+## 🤖 AI Assistance Disclosure
+
+**Penggunaan AI dalam Pengembangan:**
+
+Aplikasi ini dikembangkan dengan bantuan **AI generatif (Kiro AI)** untuk:
+
+### Assisted Areas:
+- ✅ **Code Review & Debugging**: Identifikasi bugs dan optimasi kode
+- ✅ **Architecture Planning**: Diskusi design patterns dan best practices
+- ✅ **Documentation**: Pembuatan README.md dan code comments
+- ✅ **Code Generation**: Boilerplate code dan repetitive patterns
+- ✅ **Problem Solving**: Troubleshooting technical issues
+
+### Developer Responsibility:
+- ✅ **All code reviewed & understood** sebelum implementasi
+- ✅ **Core logic & architecture decisions** dibuat oleh developer
+- ✅ **Testing & validation** dilakukan secara manual
+- ✅ **AI output verified** untuk correctness dan best practices
+
+**Transparency Note:** Penggunaan AI tools seperti Kiro, ChatGPT, atau Copilot adalah bagian dari modern development workflow yang meningkatkan produktivitas tanpa mengurangi pemahaman teknis developer terhadap codebase.
 
 ---
 
