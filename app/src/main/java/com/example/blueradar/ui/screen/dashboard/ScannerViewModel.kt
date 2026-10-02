@@ -59,6 +59,13 @@ class ScannerViewModel @Inject constructor(
                 }
         }
         
+        // Observe shared scanning state from repository (untuk sync antar screens)
+        viewModelScope.launch {
+            bleRepository.isScanning().collect { isScanning ->
+                _uiState.update { it.copy(isScanning = isScanning) }
+            }
+        }
+        
         // Check initial state
         checkSystemReadiness()
     }
@@ -108,7 +115,8 @@ class ScannerViewModel @Inject constructor(
             return
         }
 
-        _uiState.update { it.copy(isScanning = true, error = null) }
+        _uiState.update { it.copy(error = null) }
+        // isScanning akan auto-update dari bleRepository.isScanning() flow
 
         // Buffer untuk collect device updates
         val deviceBuffer = mutableMapOf<String, BleDevice>()
@@ -195,11 +203,17 @@ class ScannerViewModel @Inject constructor(
 
     /**
      * Stop BLE scanning
+     * Clear devices untuk realtime behavior (seperti Radar View)
      */
     fun stopScanning() {
         scanJob?.cancel()
         bleRepository.stopScanning()
-        _uiState.update { it.copy(isScanning = false) }
+        // isScanning akan auto-update dari bleRepository.isScanning() flow
+        _uiState.update { 
+            it.copy(
+                devices = emptyMap() // Clear devices ketika scan stop
+            ) 
+        }
     }
 
     /**
@@ -232,7 +246,9 @@ class ScannerViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        stopScanning()
+        // JANGAN auto-stop scanning
+        // User bisa manual stop dari UI
+        // Scan tetap jalan antar screen untuk continuity
     }
 }
 

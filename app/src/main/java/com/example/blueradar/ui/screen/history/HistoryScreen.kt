@@ -7,9 +7,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,8 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.blueradar.data.local.DeviceEntity
+import com.example.blueradar.ui.components.BlueRadarAppBarSimple
 import com.example.blueradar.ui.components.BlueRadarBottomNavBar
 import com.example.blueradar.ui.components.NavTab
+import com.example.blueradar.ui.components.SystemStatusDialog
 import com.example.blueradar.ui.util.isLandscape
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,11 +36,16 @@ import java.util.*
 fun HistoryScreen(
     onNavigateBack: () -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
-    viewModel: HistoryViewModel = hiltViewModel()
+    onNavigateToRadar: () -> Unit = {},
+    viewModel: HistoryViewModel = hiltViewModel(),
+    scannerViewModel: com.example.blueradar.ui.screen.dashboard.ScannerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scannerState by scannerViewModel.uiState.collectAsState()
+    
     var showClearDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showBluetoothDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
 
@@ -44,34 +53,11 @@ fun HistoryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "BlueRadar - History Log",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = "Bluetooth", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.Tune, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            BlueRadarAppBarSimple(
+                title = "History",
+                isBluetoothEnabled = scannerState.isBluetoothEnabled,
+                isLocationEnabled = scannerState.isLocationEnabled,
+                onStatusClick = { showBluetoothDialog = true }
             )
         },
         bottomBar = {
@@ -80,7 +66,7 @@ fun HistoryScreen(
                 onTabSelected = { tab ->
                     when (tab) {
                         NavTab.SCANNER -> onNavigateBack()
-                        NavTab.RADAR -> onNavigateBack()
+                        NavTab.RADAR -> onNavigateToRadar()
                         NavTab.HISTORY -> {}
                     }
                 }
@@ -206,6 +192,18 @@ fun HistoryScreen(
             shape = RoundedCornerShape(20.dp)
         )
     }
+
+    // System Status Dialog (Reusable)
+    val mainActivity = com.example.blueradar.LocalMainActivity.current
+    SystemStatusDialog(
+        show = showBluetoothDialog,
+        isBluetoothEnabled = scannerState.isBluetoothEnabled,
+        isLocationEnabled = scannerState.isLocationEnabled,
+        onDismiss = { showBluetoothDialog = false },
+        onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
+        onEnableLocation = { mainActivity.requestEnableLocation() },
+        additionalInfo = "BLE Mode: High Speed LE Scan"
+    )
 
     // Clear history dialog
     if (showClearDialog) {

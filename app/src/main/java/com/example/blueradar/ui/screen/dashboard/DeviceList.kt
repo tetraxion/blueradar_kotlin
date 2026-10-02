@@ -131,7 +131,7 @@ fun DeviceItem(
                 // Name & MAC
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = device.name ?: "Unknown Peripheral",
+                        text = device.name ?: "Unknown Device",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

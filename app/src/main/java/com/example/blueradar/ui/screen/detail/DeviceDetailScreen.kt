@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.blueradar.domain.model.SignalCategory
 import com.example.blueradar.domain.util.RssiUtils
+import com.example.blueradar.ui.components.SystemStatusActions
+import com.example.blueradar.ui.components.SystemStatusDialog
+import com.example.blueradar.ui.screen.dashboard.ScannerViewModel
 import com.example.blueradar.ui.screen.radar.RadarViewModel
 import kotlin.math.cos
 import kotlin.math.sin
@@ -35,16 +38,18 @@ import kotlin.math.sin
 fun DeviceDetailScreen(
     macAddress: String,
     onNavigateBack: () -> Unit,
-    viewModel: RadarViewModel = hiltViewModel()
+    viewModel: RadarViewModel = hiltViewModel(),
+    scannerViewModel: ScannerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scannerState by scannerViewModel.uiState.collectAsState()
 
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     var showCalibrateDialog by remember { mutableStateOf(false) }
     var showBluetoothDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
-    val currentDeviceName = uiState.device?.name ?: if (macAddress.isNotEmpty()) "Target BLE Device ($macAddress)" else "Beacon Device"
+    val currentDeviceName = uiState.device?.name ?: "Unknown Device"
     val currentMac = uiState.device?.mac ?: if (macAddress.isNotEmpty()) macAddress else "00:00:00:00:00:00"
 
     Scaffold(
@@ -55,10 +60,11 @@ fun DeviceDetailScreen(
                         Text(
                             text = currentDeviceName,
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
                         )
                         Text(
-                            text = "MAC: $currentMac",
+                            text = currentMac,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -70,12 +76,12 @@ fun DeviceDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showBluetoothDialog = true }) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = "Bluetooth Status", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Tune, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    SystemStatusActions(
+                        isBluetoothEnabled = scannerState.isBluetoothEnabled,
+                        isLocationEnabled = scannerState.isLocationEnabled,
+                        onStatusClick = { showBluetoothDialog = true },
+                        onSettingsClick = { showSettingsDialog = true }
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
@@ -153,25 +159,17 @@ fun DeviceDetailScreen(
                 }
             }
 
-            // Bluetooth Status Dialog
-            if (showBluetoothDialog) {
-                AlertDialog(
-                    onDismissRequest = { showBluetoothDialog = false },
-                    title = { Text("Bluetooth Status", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Column {
-                            Text("• Adapter: Enabled & Operational")
-                            Text("• Tracking Target: $currentMac")
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showBluetoothDialog = false }) {
-                            Text("Tutup", fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    shape = RoundedCornerShape(20.dp)
-                )
-            }
+            // System Status Dialog (Reusable)
+            val mainActivity = com.example.blueradar.LocalMainActivity.current
+            SystemStatusDialog(
+                show = showBluetoothDialog,
+                isBluetoothEnabled = scannerState.isBluetoothEnabled,
+                isLocationEnabled = scannerState.isLocationEnabled,
+                onDismiss = { showBluetoothDialog = false },
+                onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
+                onEnableLocation = { mainActivity.requestEnableLocation() },
+                additionalInfo = "Tracking: $currentMac"
+            )
 
             // Scanner Settings Dialog
             if (showSettingsDialog) {
@@ -523,26 +521,89 @@ private fun DetailActionButtons(
     onPing: () -> Unit,
     onCalibrate: () -> Unit
 ) {
+    var showPingInfoDialog by remember { mutableStateOf(false) }
+    
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button(
-            onClick = onPing,
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Ping Beacon Buzzer / LED", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        }
+            // Ping Beacon - Icon Button with Dialog
+            OutlinedButton(
+                onClick = { showPingInfoDialog = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Ping Beacon", fontSize = 14.sp)
+            }
 
-        OutlinedButton(
-            onClick = onCalibrate,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("Calibrate Reference RSSI (1m)")
+            // Calibrate Button
+            OutlinedButton(
+                onClick = onCalibrate,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Calibrate", fontSize = 14.sp)
+            }
         }
+    }
+    
+    // Ping Info Dialog
+    if (showPingInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showPingInfoDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Ping Beacon", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            "COMING SOON",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFF59E0B)
+                        )
+                    }
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        "Fitur untuk trigger buzzer/LED pada device BLE yang mendukung (key finder, tracker tag).",
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Status: Dalam pengembangan",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF59E0B)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Memerlukan implementasi GATT connection & konfigurasi karakteristik device.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPingInfoDialog = false }) {
+                    Text("Mengerti", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }

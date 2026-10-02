@@ -56,8 +56,12 @@ fun AppNavHost(
                     navController.navigate(Screen.DeviceDetail.createRoute(macAddress))
                 },
                 onNavigateBack = {
-                    navController.popBackStack()
-                }
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                navController = navController
             )
         }
 
@@ -65,10 +69,18 @@ fun AppNavHost(
         composable(Screen.History.route) {
             HistoryScreen(
                 onNavigateBack = {
-                    navController.popBackStack()
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateToDetail = { macAddress ->
                     navController.navigate(Screen.DeviceDetail.createRoute(macAddress))
+                },
+                onNavigateToRadar = {
+                    navController.navigate(Screen.Radar.route) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }

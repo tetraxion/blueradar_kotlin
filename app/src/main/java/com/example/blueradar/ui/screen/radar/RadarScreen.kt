@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,8 +29,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.blueradar.domain.model.BleDevice
 import com.example.blueradar.domain.model.SignalCategory
 import com.example.blueradar.domain.util.RssiUtils
+import com.example.blueradar.ui.components.BlueRadarAppBar
 import com.example.blueradar.ui.components.BlueRadarBottomNavBar
 import com.example.blueradar.ui.components.NavTab
+import com.example.blueradar.ui.components.SystemStatusDialog
+import com.example.blueradar.ui.util.isLandscape
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -38,9 +42,12 @@ import kotlin.math.sin
 fun RadarScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: RadarViewModel = hiltViewModel()
+    viewModel: RadarViewModel = hiltViewModel(),
+    scannerViewModel: com.example.blueradar.ui.screen.dashboard.ScannerViewModel = hiltViewModel(),
+    navController: androidx.navigation.NavHostController? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scannerState by scannerViewModel.uiState.collectAsState()
 
     var showBluetoothDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -57,34 +64,15 @@ fun RadarScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Radar,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "360° Live Radar Scope",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showBluetoothDialog = true }) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = "Bluetooth Status", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Tune, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            BlueRadarAppBar(
+                title = "Radar View",
+                badgeText = "360° Live",
+                badgeColor = Color(0xFF8B5CF6),
+                isActive = scannerState.isScanning,
+                isBluetoothEnabled = scannerState.isBluetoothEnabled,
+                isLocationEnabled = scannerState.isLocationEnabled,
+                onStatusClick = { showBluetoothDialog = true },
+                onSettingsClick = { showSettingsDialog = true }
             )
         },
         bottomBar = {
@@ -92,9 +80,24 @@ fun RadarScreen(
                 currentTab = NavTab.RADAR,
                 onTabSelected = { tab ->
                     when (tab) {
-                        NavTab.SCANNER -> onNavigateBack()
+                        NavTab.SCANNER -> {
+                            if (navController != null) {
+                                navController.navigate("dashboard") {
+                                    popUpTo("dashboard") { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            } else {
+                                onNavigateBack()
+                            }
+                        }
                         NavTab.RADAR -> {}
-                        NavTab.HISTORY -> onNavigateBack()
+                        NavTab.HISTORY -> {
+                            if (navController != null) {
+                                navController.navigate("history") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
                     }
                 }
             )
@@ -107,10 +110,18 @@ fun RadarScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Scope Stats Header Banner
+                // Scope Stats Header Banner dengan Scan Control
                 RadarScopeHeaderBanner(
                     deviceCount = activeDevices.size,
-                    totalCount = uiState.allDevices.size
+                    totalCount = uiState.allDevices.size,
+                    isScanning = scannerState.isScanning,
+                    onToggleScan = {
+                        if (scannerState.isScanning) {
+                            scannerViewModel.stopScanning()
+                        } else {
+                            scannerViewModel.startScanning()
+                        }
+                    }
                 )
 
                 // Range Filter Chips
@@ -199,25 +210,17 @@ fun RadarScreen(
                 }
             }
 
-            // Bluetooth Status Dialog
-            if (showBluetoothDialog) {
-                AlertDialog(
-                    onDismissRequest = { showBluetoothDialog = false },
-                    title = { Text("Bluetooth Status", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Column {
-                            Text("• Adapter: Enabled & Operational")
-                            Text("• Radar Mode: 360° Multi-Target Scope")
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showBluetoothDialog = false }) {
-                            Text("Tutup", fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    shape = RoundedCornerShape(20.dp)
-                )
-            }
+            // System Status Dialog (Reusable)
+            val mainActivity = com.example.blueradar.LocalMainActivity.current
+            SystemStatusDialog(
+                show = showBluetoothDialog,
+                isBluetoothEnabled = scannerState.isBluetoothEnabled,
+                isLocationEnabled = scannerState.isLocationEnabled,
+                onDismiss = { showBluetoothDialog = false },
+                onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
+                onEnableLocation = { mainActivity.requestEnableLocation() },
+                additionalInfo = "Radar Mode: 360° Multi-Target"
+            )
 
             // Scanner Settings Dialog
             if (showSettingsDialog) {
@@ -244,56 +247,127 @@ fun RadarScreen(
 @Composable
 fun RadarScopeHeaderBanner(
     deviceCount: Int,
-    totalCount: Int
+    totalCount: Int,
+    isScanning: Boolean,
+    onToggleScan: () -> Unit
 ) {
-    Surface(
+    val landscape = isLandscape()
+    
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+            .padding(
+                horizontal = 16.dp,
+                vertical = if (landscape) 2.dp else 4.dp
+            )
     ) {
+        // Clean Scan Control Button (tata letak berbeda dari Scanner)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = Color(0xFF10B981).copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+            // Stats Info
+            Column {
+                Text(
+                    text = "DETECTED",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontSize = if (landscape) 9.sp else 10.sp
+                )
+                Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "• REALTIME SWEEP",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "$deviceCount",
+                        style = if (landscape) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF10B981)
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "devices",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = if (landscape) 10.sp else 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "$deviceCount Devices on Scope",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
             }
 
-            Text(
-                text = "SWEEP: 1.2s",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
+            // Scan Toggle Button (icon-only, clean design)
+            FloatingActionButton(
+                onClick = onToggleScan,
+                modifier = Modifier.size(if (landscape) 48.dp else 56.dp),
+                containerColor = if (isScanning) Color(0xFF8B5CF6) else MaterialTheme.colorScheme.surfaceVariant,
+                elevation = FloatingActionButtonDefaults.elevation(2.dp)
+            ) {
+                Icon(
+                    imageVector = if (isScanning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = if (isScanning) "Stop Scan" else "Start Scan",
+                    tint = if (isScanning) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(if (landscape) 20.dp else 24.dp)
+                )
+            }
+        }
+
+        if (!landscape) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Minimal Status Bar - only in portrait
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = if (isScanning) Color(0xFF8B5CF6) else Color.Gray,
+                                shape = CircleShape
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isScanning) "Scanning" else "Idle",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Text(
+                    text = "Sweep: 1.2s",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            // Landscape: just status dot inline
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(
+                            color = if (isScanning) Color(0xFF8B5CF6) else Color.Gray,
+                            shape = CircleShape
+                        )
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (isScanning) "Scanning" else "Idle",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
 fun Spatial360RadarScope(devices: List<BleDevice>) {
+    val landscape = isLandscape()
+    
     val infiniteTransition = rememberInfiniteTransition(label = "radarSweep")
     val sweepAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -306,9 +380,10 @@ fun Spatial360RadarScope(devices: List<BleDevice>) {
     )
 
     val primaryColor = MaterialTheme.colorScheme.primary
+    val radarSize = if (landscape) 180.dp else 250.dp
 
     Box(
-        modifier = Modifier.size(250.dp),
+        modifier = Modifier.size(radarSize),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -446,11 +521,16 @@ fun ScopeDeviceItemCard(
         MaterialTheme.colorScheme.primary
     }
 
-    Card(
+    // Clean minimal card design (berbeda dari Scanner)
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+        tonalElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
     ) {
         Row(
             modifier = Modifier
@@ -460,59 +540,50 @@ fun ScopeDeviceItemCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Surface(
-                    modifier = Modifier.size(36.dp),
-                    shape = CircleShape,
-                    color = signalColor.copy(alpha = 0.15f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Bluetooth,
-                            contentDescription = null,
-                            tint = signalColor,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                // Minimal signal indicator dot
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(signalColor, CircleShape)
+                )
 
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Column {
                     Text(
-                        text = device.name ?: "Unknown Peripheral",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        text = device.name ?: "Unknown Device",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
                     )
                     Text(
-                        text = "${device.mac} • ${device.rssi} dBm",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "${device.rssi} dBm",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = RssiUtils.formatDistance(device.estimatedDistance),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Distance badge (minimal)
+                Text(
+                    text = RssiUtils.formatDistance(device.estimatedDistance),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = signalColor
+                )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedButton(
+                // Minimal track button
+                IconButton(
                     onClick = onTrackDetail,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    Text("Track", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Track",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

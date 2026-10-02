@@ -11,6 +11,8 @@ import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
@@ -26,8 +28,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.blueradar.LocalMainActivity
+import com.example.blueradar.ui.components.BlueRadarAppBar
 import com.example.blueradar.ui.components.BlueRadarBottomNavBar
 import com.example.blueradar.ui.components.NavTab
+import com.example.blueradar.ui.components.SystemStatusDialog
 import com.example.blueradar.ui.util.isLandscape
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -111,69 +116,15 @@ fun DashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            modifier = Modifier.size(36.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.BluetoothSearching,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            "BlueRadar",
-                            fontWeight = FontWeight.ExtraBold,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        // Live Scanner Badge
-                        Surface(
-                            color = if (uiState.isScanning) Color(0xFF10B981).copy(alpha = 0.15f) else Color.Gray.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = if (uiState.isScanning) "• Scanner" else "• Idle",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (uiState.isScanning) Color(0xFF10B981) else Color.Gray
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // System Status Icon - Dynamic (Bluetooth + Location)
-                    IconButton(onClick = { showBluetoothDialog = true }) {
-                        Icon(
-                            imageVector = if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) {
-                                Icons.Default.Bluetooth // Bluetooth icon jika semua OK
-                            } else {
-                                Icons.Default.BluetoothDisabled // BluetoothDisabled icon jika ada yang mati
-                            },
-                            contentDescription = "System Status",
-                            tint = if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) {
-                                Color(0xFF10B981) // Green jika semua enabled
-                            } else {
-                                Color(0xFFDC2626) // Red jika ada yang disabled
-                            }
-                        )
-                    }
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Tune, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            BlueRadarAppBar(
+                title = "BlueRadar",
+                badgeText = "Scanner",
+                badgeColor = Color(0xFF10B981),
+                isActive = uiState.isScanning,
+                isBluetoothEnabled = uiState.isBluetoothEnabled,
+                isLocationEnabled = uiState.isLocationEnabled,
+                onStatusClick = { showBluetoothDialog = true },
+                onSettingsClick = { showSettingsDialog = true }
             )
         },
         bottomBar = {
@@ -240,96 +191,17 @@ fun DashboardScreen(
                 }
             }
 
-            // Bluetooth Status Dialog dengan Enable Action
-            if (showBluetoothDialog) {
-                AlertDialog(
-                    onDismissRequest = { showBluetoothDialog = false },
-                    title = { Text("System Status", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Column {
-                            // Bluetooth Status
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("• Bluetooth:")
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = if (uiState.isBluetoothEnabled) "Enabled" else "Disabled",
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (uiState.isBluetoothEnabled) Color(0xFF10B981) else Color(0xFFDC2626)
-                                    )
-                                    if (!uiState.isBluetoothEnabled) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Button(
-                                            onClick = {
-                                                mainActivity.requestEnableBluetooth()
-                                                showBluetoothDialog = false
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary
-                                            ),
-                                            modifier = Modifier.height(32.dp),
-                                            contentPadding = PaddingValues(horizontal = 12.dp)
-                                        ) {
-                                            Text("Enable", fontSize = 12.sp)
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Location Status
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("• Location:")
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = if (uiState.isLocationEnabled) "Enabled" else "Disabled",
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (uiState.isLocationEnabled) Color(0xFF10B981) else Color(0xFFDC2626)
-                                    )
-                                    if (!uiState.isLocationEnabled) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Button(
-                                            onClick = {
-                                                mainActivity.requestEnableLocation()
-                                                showBluetoothDialog = false
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primary
-                                            ),
-                                            modifier = Modifier.height(32.dp),
-                                            contentPadding = PaddingValues(horizontal = 12.dp)
-                                        ) {
-                                            Text("Enable", fontSize = 12.sp)
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Divider()
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Additional Info
-                            Text("• BLE Mode: High Speed LE Scan", fontSize = 13.sp)
-                            Text("• Status: ${if (uiState.isBluetoothEnabled && uiState.isLocationEnabled) "Ready to Scan" else "Not Ready"}", fontSize = 13.sp)
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showBluetoothDialog = false }) {
-                            Text("Tutup", fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    shape = RoundedCornerShape(20.dp)
-                )
-            }
+            // System Status Dialog (Reusable)
+            val mainActivity = LocalMainActivity.current
+            SystemStatusDialog(
+                show = showBluetoothDialog,
+                isBluetoothEnabled = uiState.isBluetoothEnabled,
+                isLocationEnabled = uiState.isLocationEnabled,
+                onDismiss = { showBluetoothDialog = false },
+                onEnableBluetooth = { mainActivity.requestEnableBluetooth() },
+                onEnableLocation = { mainActivity.requestEnableLocation() },
+                additionalInfo = "BLE Mode: High Speed LE Scan"
+            )
 
             // Scanner Settings Dialog
             if (showSettingsDialog) {
@@ -398,15 +270,23 @@ fun ScanningStatsHeaderCard(
     deviceCount: Int,
     onToggleScan: () -> Unit
 ) {
+    val landscape = isLandscape()
+    
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 3.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(
+                horizontal = 16.dp,
+                vertical = if (landscape) 2.dp else 3.dp
+            ),
+        shape = RoundedCornerShape(if (landscape) 12.dp else 16.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp
     ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(
+            horizontal = if (landscape) 10.dp else 12.dp,
+            vertical = if (landscape) 6.dp else 10.dp
+        )) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -420,12 +300,15 @@ fun ScanningStatsHeaderCard(
                         containerColor = if (isScanning) Color(0xFF059669) else Color(0xFFDC2626)
                     ),
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(vertical = 4.dp, horizontal = 12.dp)
+                    contentPadding = PaddingValues(
+                        vertical = if (landscape) 2.dp else 4.dp,
+                        horizontal = 12.dp
+                    )
                 ) {
                     Text(
-                        text = if (isScanning) "• Scanning Active..." else "• Scanning Stopped",
+                        text = if (isScanning) "• Scanning..." else "• Stopped",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                        fontSize = if (landscape) 11.sp else 13.sp
                     )
                 }
 
@@ -433,7 +316,7 @@ fun ScanningStatsHeaderCard(
 
                 IconButton(
                     onClick = onToggleScan,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(if (landscape) 32.dp else 36.dp),
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -442,57 +325,79 @@ fun ScanningStatsHeaderCard(
                         imageVector = if (isScanning) Icons.Default.Refresh else Icons.Default.PlayArrow,
                         contentDescription = "Refresh",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(if (landscape) 16.dp else 18.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Stats 3-Grid (TARGETS Live, SWEEP RATE, SAMPLING)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                HeaderStatBox(title = "TARGETS", value = "$deviceCount Live")
-                HeaderStatBox(title = "SWEEP RATE", value = "1.2 sec")
-                HeaderStatBox(title = "SAMPLING", value = "48 KH")
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Hardware info bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Bluetooth,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Bluetooth LE: Ready",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            if (!landscape) {
+                // Stats - only show in portrait
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    HeaderStatBox(title = "TARGETS", value = "$deviceCount Live")
+                    HeaderStatBox(title = "SWEEP", value = "1.2 sec")
+                    HeaderStatBox(title = "MODE", value = "BLE")
                 }
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(6.dp)
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Hardware info bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Bluetooth,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Bluetooth LE: Ready",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "RTS 512",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            } else {
+                // Landscape: show compact stats inline
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "RTS 512",
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        text = "$deviceCount Targets",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "BLE Mode",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
